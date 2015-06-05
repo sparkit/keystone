@@ -20,7 +20,17 @@ module.exports = function(req, res) {
 
 		if (err) return res.status(500).json({ err: 'database error', detail: err });
 		if (!item) return res.status(404).json({ err: 'not found', id: req.params.id });
-
+        if (!req.user.isAdmin
+            //if a standard user 
+            && (!item.createdBy
+                //tries to access items with no createdBy field,
+                //prevent it since no nonAdmin items lack the createdBy field
+                ||
+                //or tries to access items created by others,prevent it
+                item.createdBy._id.toString() !== req.user._id.toString())) {
+            console.log("unauthorised");
+            return;
+        }
 		var drilldown = {
 			def: req.list.get('drilldown'),
 			items: []

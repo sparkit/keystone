@@ -184,7 +184,22 @@ exports = module.exports = function(req, res) {
 
 				if (err) return sendError('database error', err);
 				if (!item) return sendError('not found');
-
+                var deleteRights = ["Category", "SubCategory", "Item"];
+                if (!req.user.isAdmin
+                //none of the nonAdmin items lack createdBy
+                    && ((!item.createdBy) //hence, prevent removal    
+                        ||
+                        (item.createdBy 
+                         && ( //all non-admin items are tracked using  createdBy 
+                        //if the item requires admin access,prevent removal                
+                            deleteRights.indexOf(req.list.key) === -1
+                        //else prevent removal if not the users
+                            || (item.createdBy.toString() !== req.user.id.toString()))))) {
+    console.log("Item created by/assigned to : " + item.createdBy + "   Current user : " + req.user.id + " isAdmin : " + req.user.isAdmin);
+    req.flash('error', "unauthorised");
+    return res.redirect('/keystone/' + req.list.path);
+                }
+                
 				item.remove(function (err) {
 					if (err) return sendError('database error', err);
 

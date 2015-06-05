@@ -55,7 +55,20 @@ exports = module.exports = function(req, res) {
 
 	var renderView = function() {
 
-		var query = req.list.paginate({ filters: queryFilters, page: req.params.page, perPage: req.list.get('perPage') }).sort(sort.by);
+		var query;
+        if (req.user.isAdmin) {
+            query = req.list.paginate({
+            filters: queryFilters,
+            page: req.params.page,
+            perPage: req.list.get('perPage'),
+            }).sort(sort.by);
+        } else {
+            query = req.list.paginate({
+            filters: queryFilters,
+            page: req.params.page,
+            perPage: req.list.get('perPage'),
+            }).where("createdBy", req.user.id).sort(sort.by);
+        }
 
 		req.list.selectColumns(query, columns);
 
@@ -179,7 +192,22 @@ exports = module.exports = function(req, res) {
 
 		req.list.model.findById(req.query['delete']).exec(function (err, item) { //eslint-disable-line dot-notation
 			if (err || !item) return res.redirect('/keystone/' + req.list.path);
+            var deleteRights = ["Category", "SubCategory", "Item"];
+            if (!req.user.isAdmin
+                //none of the nonAdmin items lack createdBy
+                && ((!item.createdBy) //hence, prevent removal    
+                    ||
+                    (item.createdBy
+                     && ( //all non-admin items are tracked using createdBy 
+                        //if the item requires admin access,prevent removal                
+                        deleteRights.indexOf(req.list.key) === -1
+                        //else prevent removal if not the users
+                        || (item.createdBy.toString() !== req.user.id.toString()))))) {
 
+                console.log("Item created by/assigned to : " + item.createdBy + "   Current user : " + req.user.id + " isAdmin : " + req.user.isAdmin);
+                req.flash('error', "unauthorised");
+                return res.redirect('/keystone/' + req.list.path);
+            }
 			item.remove(function (err) {
 				if (err) {
 					console.log('Error deleting ' + req.list.singular);
