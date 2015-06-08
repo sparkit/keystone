@@ -8,7 +8,7 @@ exports = module.exports = function(req, res) {
 
 	itemQuery.exec(function(err, item) {
 
-		if (!item) {
+		if (!item || !keystone.get("canAccessItem")(req.user,item)) {
 			req.flash('error', 'Item ' + req.params.item + ' could not be found.');
 			return res.redirect('/keystone/' + req.list.path);
 		}

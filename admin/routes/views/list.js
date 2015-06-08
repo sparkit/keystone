@@ -55,7 +55,7 @@ exports = module.exports = function(req, res) {
 
 	var renderView = function() {
 
-		var query = req.list.paginate({ filters: queryFilters, page: req.params.page, perPage: req.list.get('perPage') }).sort(sort.by);
+		var query = keystone.get("generateQuery")(req.list,req.params,req.user,queryFilters,sort);
 
 		req.list.selectColumns(query, columns);
 
@@ -216,6 +216,10 @@ exports = module.exports = function(req, res) {
 	} else if (!req.list.get('nocreate') && req.method === 'POST' && req.body.action === 'create') {
 
 		if (!checkCSRF()) return renderView();
+		if (!keystone.get("canCreate")(req.user)) {
+				req.flash('error', "unauthorised");
+				return res.redirect('/keystone/' + req.list.path);
+		}
 
 		item = new req.list.model();
 		var updateHandler = item.getUpdateHandler(req);
